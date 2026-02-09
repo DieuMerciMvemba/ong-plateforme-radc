@@ -98,10 +98,6 @@ temp/
 firebase-debug.log
 firebase-debug.*.log
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 449f3a447421cbb3278d92db40e07e8e3c615828
 # Stripe
 stripe_*.log
 
@@ -139,6 +135,3 @@ test-results.xml
 
 # Local development
 .local/
-firebase/config.md
-firebase/radc-test-firebase-adminsdk-fbsvc-48528321c0.json
-scripts/setAdmin.js
