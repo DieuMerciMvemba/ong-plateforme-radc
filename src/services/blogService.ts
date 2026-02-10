@@ -55,32 +55,90 @@ export class ArticleService {
     return docRef.id;
   }
 
+  // Convertir les liens Google Drive en liens directs d'images
+  static convertGoogleDriveUrl(url: string): string {
+    if (!url) return '';
+    
+    // Pattern pour les liens Google Drive
+    const driveMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9-_]+)/);
+    if (driveMatch && driveMatch[1]) {
+      const fileId = driveMatch[1];
+      // Essayer le format thumbnail (plus fiable)
+      return `https://drive.google.com/thumbnail?id=${fileId}`;
+      // Alternative: https://drive.google.com/thumbnail?id=${fileId}
+    }
+    
+    return url;
+  }
+
   static async getArticlesPublies(page: number = 1, limite: number = 10): Promise<ResultatRechercheArticle> {
+    // Utiliser une requête simple sans ordre pour éviter l'erreur d'index
     const q = query(
       collection(db, 'articles'),
       where('statut', '==', 'publie'),
-      orderBy('datePublication', 'desc'),
       limit(limite)
     );
 
-    // Pour la pagination, on utiliserait startAfter si on avait un document de référence
-    // Pour l'instant, on récupère simplement les premiers résultats
-
     const querySnapshot = await getDocs(q);
+    
     const articles = querySnapshot.docs.map(doc => {
-      const data = doc.data() as Article;
-      return {
-        ...data,
-        id: doc.id,
-        datePublication: data.datePublication instanceof Timestamp ? data.datePublication.toDate() : new Date(),
-        dateModification: data.dateModification instanceof Timestamp ? data.dateModification.toDate() : new Date(),
-        dateCreation: data.dateCreation instanceof Timestamp ? data.dateCreation.toDate() : new Date()
-      };
-    });
+      const data = doc.data() as any;
+      
+      try {
+        // Normaliser les données pour le blog public
+        const normalizedArticle: Article = {
+          id: doc.id,
+          titre: data.titre,
+          slug: data.slug,
+          contenu: data.contenu,
+          excerpt: data.metaDescription || data.contenu.substring(0, 150) + '...',
+          auteur: {
+            id: 'admin',
+            nom: data.auteur || 'Admin RADC',
+            email: 'admin@radc.org'
+          },
+          categorie: {
+            id: data.categorie || 'general',
+            nom: data.categorie || 'Général',
+            couleur: '#3B82F6',
+            description: '',
+            slug: data.categorie || 'general',
+            ordre: 1,
+            sousCategories: [],
+            nombreArticles: 0,
+            statut: 'actif'
+          },
+          tags: Array.isArray(data.tags) ? data.tags : (data.tags || '').split(',').map((tag: string) => tag.trim()).filter((tag: string) => tag),
+          images: {
+            principale: this.convertGoogleDriveUrl(data.image || data.images?.[0] || ''),
+            gallerie: Array.isArray(data.images) ? data.images.map((img: string) => this.convertGoogleDriveUrl(img)) : [],
+            miniature: this.convertGoogleDriveUrl(data.image || data.images?.[0] || '')
+          },
+          statut: data.statut,
+          vues: data.vues || 0,
+          likes: data.likes || 0,
+          commentaires: data.commentaires || 0,
+          tempsLecture: data.tempsLecture || 5,
+          estVedette: false,
+          datePublication: data.publishedAt instanceof Timestamp ? data.publishedAt.toDate() : new Date(),
+          dateModification: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date(),
+          dateCreation: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
+          seo: {
+            metaDescription: data.metaDescription || data.contenu.substring(0, 150),
+            motsCles: Array.isArray(data.tags) ? data.tags : (data.tags || '').split(',').map((tag: string) => tag.trim()).filter((tag: string) => tag)
+          },
+          estPopulaire: false
+        };
+        
+        return normalizedArticle;
+      } catch (error) {
+        return null;
+      }
+    }).filter(article => article !== null) as Article[];
 
     return {
       articles,
-      total: articles.length, // TODO: Implémenter le comptage total
+      total: articles.length,
       page,
       totalPages: Math.ceil(articles.length / limite),
       filtresAppliquees: {
@@ -103,14 +161,54 @@ export class ArticleService {
     const querySnapshot = await getDocs(q);
     if (querySnapshot.empty) return null;
 
-    const data = querySnapshot.docs[0].data() as Article;
-    return {
-      ...data,
+    const data = querySnapshot.docs[0].data() as any;
+    
+    // Normaliser les données pour le blog public
+    const normalizedArticle: Article = {
       id: querySnapshot.docs[0].id,
-      datePublication: data.datePublication instanceof Timestamp ? data.datePublication.toDate() : new Date(),
-      dateModification: data.dateModification instanceof Timestamp ? data.dateModification.toDate() : new Date(),
-      dateCreation: data.dateCreation instanceof Timestamp ? data.dateCreation.toDate() : new Date()
+      titre: data.titre,
+      slug: data.slug,
+      contenu: data.contenu,
+      excerpt: data.metaDescription || data.contenu.substring(0, 150) + '...',
+      auteur: {
+        id: 'admin',
+        nom: data.auteur || 'Admin RADC',
+        email: 'admin@radc.org'
+      },
+      categorie: {
+        id: data.categorie || 'general',
+        nom: data.categorie || 'Général',
+        couleur: '#3B82F6',
+        description: '',
+        slug: data.categorie || 'general',
+        ordre: 1,
+        sousCategories: [],
+        nombreArticles: 0,
+        statut: 'actif'
+      },
+      tags: Array.isArray(data.tags) ? data.tags : (data.tags || '').split(',').map((tag: string) => tag.trim()).filter((tag: string) => tag),
+      images: {
+        principale: data.image || data.images?.[0] || '',
+        gallerie: Array.isArray(data.images) ? data.images : [],
+        miniature: data.image || data.images?.[0] || ''
+      },
+      statut: data.statut,
+      vues: data.vues || 0,
+      likes: data.likes || 0,
+      commentaires: data.commentaires || 0,
+      tempsLecture: data.tempsLecture || 5,
+      estVedette: false,
+      datePublication: data.publishedAt instanceof Timestamp ? data.publishedAt.toDate() : new Date(),
+      dateModification: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date(),
+      dateCreation: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
+      seo: {
+        metaDescription: data.metaDescription || data.contenu.substring(0, 150),
+        motsCles: Array.isArray(data.tags) ? data.tags : (data.tags || '').split(',').map((tag: string) => tag.trim()).filter((tag: string) => tag)
+      },
+      estPopulaire: false
     };
+    
+    return normalizedArticle;
   }
 
   static async rechercherArticles(recherche: RechercheArticle): Promise<ResultatRechercheArticle> {

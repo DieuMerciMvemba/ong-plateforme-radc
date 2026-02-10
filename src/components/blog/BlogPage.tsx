@@ -30,7 +30,7 @@ const BlogPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    rechercherArticles();
+    // rechercherArticles(); // Désactivé temporairement pour éviter l'erreur d'index
   }, [recherche, filtreCategorie]);
 
   const chargerDonnees = async () => {
@@ -50,19 +50,19 @@ const BlogPage: React.FC = () => {
     }
   };
 
-  const rechercherArticles = async () => {
-    try {
-      const rechercheComplete: RechercheArticle = {
-        ...recherche,
-        categorie: filtreCategorie !== 'toutes' ? filtreCategorie : undefined
-      };
+  // const rechercherArticles = async () => {
+  //   try {
+  //     const rechercheComplete: RechercheArticle = {
+  //       ...recherche,
+  //       categorie: filtreCategorie !== 'toutes' ? filtreCategorie : undefined
+  //     };
 
-      const resultats = await ArticleService.rechercherArticles(rechercheComplete);
-      setArticles(resultats.articles);
-    } catch (error) {
-      console.error('Erreur recherche:', error);
-    }
-  };
+  //     const resultats = await ArticleService.rechercherArticles(rechercheComplete);
+  //     setArticles(resultats.articles);
+  //   } catch (error) {
+  //     console.error('Erreur recherche:', error);
+  //   }
+  // };
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('fr-FR', {
@@ -77,7 +77,7 @@ const BlogPage: React.FC = () => {
   };
 
   const articlesVedettes = articles.filter(article => article.estVedette);
-  const articlesRecents = articles.filter(article => !article.estVedette);
+  const articlesRecents = articles;
 
   if (loading) {
     return (
